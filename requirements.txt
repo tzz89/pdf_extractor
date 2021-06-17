@@ -1,0 +1,8 @@
+#installing local packages
+-e .
+
+#installing external dependencies
+pdfplumber
+pypdf2
+pytesseract
+pdfminer.six

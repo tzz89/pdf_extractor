@@ -1,0 +1,6 @@
+setup.py
+PDFExtract/__init__.py
+PDFExtract.egg-info/PKG-INFO
+PDFExtract.egg-info/SOURCES.txt
+PDFExtract.egg-info/dependency_links.txt
+PDFExtract.egg-info/top_level.txt
