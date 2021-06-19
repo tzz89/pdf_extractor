@@ -2,7 +2,13 @@
 -e .
 
 #installing external dependencies
-pdfplumber
-pypdf2
-pytesseract
-pdfminer.six
+pdfplumber == 0.5.28
+pypdf2 == 1.26.0
+pytesseract == 0.3.7
+pdfminer.six == 20200517
+camelot-py == 0.8.0
+opencv-python == 4.5.2.54
+
+# try this deeplearning approach if camelot does not work
+# pdf2image
+# CascadeTabNet 

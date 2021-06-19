@@ -1,4 +1,7 @@
+README.md
 setup.py
+PDFExtract/Document.py
+PDFExtract/Page.py
 PDFExtract/__init__.py
 PDFExtract.egg-info/PKG-INFO
 PDFExtract.egg-info/SOURCES.txt
