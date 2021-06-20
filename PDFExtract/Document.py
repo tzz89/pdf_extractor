@@ -7,6 +7,7 @@ import random
 import io
 import glob
 
+
 def __get_pagelabel_num_child(root):
     """recursively find the num child
 
@@ -18,7 +19,7 @@ def __get_pagelabel_num_child(root):
         return None
     if isinstance(root, dict):
         childrens = root.keys()
-             
+
         # print(childrens)
         if "/Nums" in childrens:
             return root['/Nums']
@@ -37,9 +38,9 @@ def __get_pagelabel_num_child(root):
                     return result
             except:
                 continue
-            
 
     return None
+
 
 def __get_pdf_metadata(pdf_obj):
     """This Function takes in a PdfFileReader object and returns document metadata
@@ -69,7 +70,7 @@ def __get_pdf_metadata(pdf_obj):
     pdf_metadata_dict['subject'] = info.subject
     pdf_metadata_dict['title'] = info.title
     pdf_metadata_dict['pages'] = number_of_pages
-    pdf_metadata_dict['page_offset'] = None 
+    pdf_metadata_dict['page_offset'] = None
 
     pdf_meta_root = pdf_obj.trailer["/Root"]
     if "/PageLabels" in pdf_meta_root.keys():
@@ -84,6 +85,7 @@ def __get_pdf_metadata(pdf_obj):
             pdf_metadata_dict['page_offset'] = offset_labels
 
     return pdf_metadata_dict
+
 
 def get_document_info(pdf):
     """This method takes in either the pdf path of type string or a PdfFileReader Oject and returns
@@ -119,47 +121,49 @@ def get_document_info(pdf):
 
     return meta_data
 
-def make_pages_upright(source_pdf_path, destination_pdf_dir):
-    file_name = os.path.basename(source_pdf_path)
-    print("Opening {}".format(file_name))
+
+def make_pages_upright(pdf_obj):
+    # create a new in memory file object for storing the new pdf
+    new_pdf_obj = io.BytesIO()
 
     # Creating main pdf writer
     main_pdf_writer = PdfFileWriter()
 
-    with open(source_pdf_path, 'rb') as pdf_file:
-        pdf_document = PdfFileReader(pdf_file)
-        document_meta_data = get_document_info(pdf_document)
-        print(json.dumps(document_meta_data, indent=4))
-        num_pages = document_meta_data['pages']
+    pdf_document = PdfFileReader(pdf_obj)
+    document_meta_data = get_document_info(pdf_document)
+    # print(json.dumps(document_meta_data, indent=4))
 
-        for i in range(num_pages):
-            print("Processing page {}".format(i))
-            current_page = pdf_document.getPage(i)
+    num_pages = document_meta_data['pages']
 
-            if __are_texts_upright(current_page):
-                main_pdf_writer.addPage(current_page)
-                continue
+    for i in range(num_pages):
+        print("Processing page {}".format(i))
+        current_page = pdf_document.getPage(i)
 
-            current_page.rotateClockwise(90)
-            if __are_texts_upright(current_page):
-                main_pdf_writer.addPage(current_page)
-                print("Rotated CW")
-                continue
-
-            current_page.rotateCounterClockwise(180)
-            if __are_texts_upright(current_page):
-                main_pdf_writer.addPage(current_page)
-                print("Rotated CCW")
-                continue
-
-            current_page.rotateClockwise(90)
+        if __are_texts_upright(current_page):
             main_pdf_writer.addPage(current_page)
+            continue
 
-        destination_pdf_fp = os.path.join(destination_pdf_dir, file_name)
-        with open(destination_pdf_fp, "wb") as destination_pdf_path:
-            main_pdf_writer.write(destination_pdf_path)
+        current_page.rotateClockwise(90)
+        if __are_texts_upright(current_page):
+            main_pdf_writer.addPage(current_page)
+            print("Rotated CW")
+            continue
 
-def __are_texts_upright(current_page, num_samples=50):
+        current_page.rotateCounterClockwise(180)
+        if __are_texts_upright(current_page):
+            main_pdf_writer.addPage(current_page)
+            print("Rotated CCW")
+            continue
+
+        current_page.rotateClockwise(90)
+        main_pdf_writer.addPage(current_page)
+
+    main_pdf_writer.write(new_pdf_obj)
+
+    return new_pdf_obj
+
+
+def __are_texts_upright(current_page, num_samples=150):
     temp_file = io.BytesIO()
     temp_pdf_writer = PdfFileWriter()
     temp_pdf_writer.addPage(current_page)
@@ -171,12 +175,14 @@ def __are_texts_upright(current_page, num_samples=50):
         random.shuffle(page_texts)
         random_chars = page_texts[:num_samples]
         orientations = [char["upright"] for char in random_chars]
+        # print(orientations)
         if len(orientations) == 0:
             return True
         percentage_upright = sum(orientations)/len(orientations)
 
     temp_file.close()
     return percentage_upright > 0.5
+
 
 def create_single_page_pdfs(pdf_path, pages, pdf_destination_folder):
     """
@@ -199,28 +205,28 @@ def create_single_page_pdfs(pdf_path, pages, pdf_destination_folder):
         return
 
     if isinstance(pages, int):
-        pages = [pages] 
+        pages = [pages]
 
     if len(pages) < 1:
         print("list of pages is empty")
         return
-    
+
     for page in pages:
         if not (isinstance(page, int) and page > 0):
-            print("Please provide pages as a single int or a list of intergers that is more than 0")
+            print(
+                "Please provide pages as a single int or a list of intergers that is more than 0")
             return
 
-    #create destination folder if not exist
+    # create destination folder if not exist
     os.makedirs(pdf_destination_folder, exist_ok=True)
 
-    #create pdf reader 
+    # create pdf reader
 
     with open(pdf_path, "rb") as f:
         pdf_document = PdfFileReader(f)
         pdf_max_pages = pdf_document.getNumPages()
 
-       
-        #create single page page for each pdf
+        # create single page page for each pdf
         for page in pages:
             if page > pdf_max_pages:
                 print("input page exceed document max page number")
@@ -229,35 +235,69 @@ def create_single_page_pdfs(pdf_path, pages, pdf_destination_folder):
             pdf_page = pdf_document.getPage(page-1)
             pdf_writer = PdfFileWriter()
             pdf_writer.addPage(pdf_page)
-            destination_file_name = os.path.basename(pdf_path) + "_page_{:04d}".format(page)+".pdf"
-            destination_file_path = os.path.join(pdf_destination_folder, destination_file_name)
-            
+            destination_file_name = os.path.basename(
+                pdf_path) + "_page_{:04d}".format(page)+".pdf"
+            destination_file_path = os.path.join(
+                pdf_destination_folder, destination_file_name)
+
             with open(destination_file_path, 'wb') as destination_f:
                 pdf_writer.write(destination_f)
 
-def decrypt_pdf_document(pdf_)
 
+def decrypt_pdf_document(pdf_obj):
+    pdf_reader_obj = PdfFileReader(pdf_obj)
 
 
 if __name__ == "__main__":
-    # make_pages_upright(
-    #     r"test_pdfs\rotation\2020PTTEPAR_en.pdf", r"processed_pdf")
+    # # Testing rotation function
+    # pdf_source_fp = r"test_pdfs\rotation\2020PTTEPAR_en.pdf"
+    # destination_folder_name = r"processed_pdf"
+    # with open(pdf_source_fp, "rb") as source_pdf:
+    #     rotated_pdf = make_pages_upright(source_pdf)
+    #     original_file_name = "rotated_" + os.path.basename(pdf_source_fp)
+    #     destination_file_path = os.path.join(
+    #         destination_folder_name, original_file_name)
 
+    # with open(destination_file_path, "wb") as destination_file:
+    #     destination_file.write(rotated_pdf.getbuffer())
+
+    # rotated_pdf.close()
+
+    # #Testing single page pdf creation function
 
     # create_single_page_pdfs(r"test_pdfs\table_extraction\2020 Origin Annual Report online version.pdf",
     #                          [1,2,3,4,5,6], r"test_pdfs\full_page_layout\table_extraction")
 
- 
     # create_single_page_pdfs(r"test_pdfs\table_extraction\2003_EDION_AR.pdf",
     #                          [2], r"test_pdfs\full_page_layout\table_extraction")
 
+    # #Testing calulating pdf page offset functions
     # pdf_with_offset = glob.glob(r"test_pdfs\page_number_offset\have_offset\*.pdf")
     # pdf_without_offset =glob.glob(r"test_pdfs\page_number_offset\no_offset\*.pdf")
-    
-    # for pdf in pdf_without_offset:
 
+    # for pdf in pdf_without_offset:
     #     document_metadata = get_document_info(pdf)
     #     print(document_metadata['page_offset'])
     #     print()
-    print()
-   
+
+    all_pdf_files = glob.glob(r"raw_pdf\*.pdf")
+    # print(all_pdf_files)
+    encrypted_pdf_files = []
+    error_pdf_files = []
+    for pdf_file in all_pdf_files:
+        try:
+            with open(pdf_file, 'rb') as f:
+                pdf_reader_obj = PdfFileReader(f)
+                if pdf_reader_obj.isEncrypted:
+                    encrypted_pdf_files.append(pdf_file)
+                    print(pdf_file)
+        except:
+            print("Unable to read pdf file ***** \n {}".format(pdf_file))
+            error_pdf_files.append(pdf_file)
+            continue
+
+    with open("error_pdf_files.json", 'w') as f:
+        json.dump(error_pdf_files, f)
+
+    with open("encrypted_pdf_files.json", "w") as f:
+        json.dump(encrypted_pdf_files, f)
